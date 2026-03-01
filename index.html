@@ -483,7 +483,30 @@
   .week-day.today .week-day-bar { background: var(--accent); }
   .week-day:not(.today) .week-day-bar { background: rgba(127,255,110,0.3); }
 
-  /* SCROLLBAR */
+  /* PROVIDER CARDS */
+  .provider-card {
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    text-align: center;
+  }
+  .provider-card:hover { border-color: #3a3a50; background: var(--surface); }
+  .provider-card.active { border-color: var(--accent); background: rgba(127,255,110,0.04); }
+  .provider-icon { font-size: 24px; margin-bottom: 8px; }
+  .provider-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+  .provider-model { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-bottom: 6px; }
+  .provider-note { font-size: 11px; color: var(--muted); }
+  .provider-check {
+    position: absolute; top: 8px; right: 10px;
+    font-size: 12px; color: var(--accent);
+    display: none;
+  }
+  .provider-card.active .provider-check { display: block; }
+  .provider-card.has-key .provider-note::before { content: '🔑 '; }
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
@@ -1081,22 +1104,101 @@
       <div class="page-header">
         <div>
           <div class="page-title">Settings</div>
-          <div class="page-sub">Connect AXIS to Claude AI</div>
+          <div class="page-sub">Connect AXIS to your preferred AI provider</div>
         </div>
       </div>
-      <div class="api-setup">
-        <div class="card-label" style="margin-bottom:12px;">🔑 Anthropic API Key</div>
-        <p style="font-size:13px; color:var(--muted); margin-bottom:16px; line-height:1.6;">
-          AXIS uses Claude AI as its brain. Get a free API key from 
-          <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent2);">console.anthropic.com</a>.
-          Your key is stored locally in your browser — never sent anywhere else.
-        </p>
-        <div style="display:flex; gap:10px; margin-bottom:12px;">
-          <input class="form-input" id="apiKeyInput" type="password" placeholder="sk-ant-api03-..." style="flex:1; font-family: DM Mono, monospace;">
-          <button class="btn btn-primary" onclick="saveApiKey()">Connect</button>
-          <button class="btn btn-secondary" onclick="testApiKey()">Test</button>
+
+      <!-- PROVIDER SELECTOR -->
+      <div class="api-setup" style="margin-bottom:16px;">
+        <div class="card-label" style="margin-bottom:14px;">🤖 Active AI Provider</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;" id="providerCards">
+
+          <div class="provider-card" id="pcard-anthropic" onclick="selectProvider('anthropic')">
+            <div class="provider-icon">🟠</div>
+            <div class="provider-name">Anthropic</div>
+            <div class="provider-model">claude-sonnet-4</div>
+            <div class="provider-note">Best quality · Paid</div>
+            <div class="provider-check" id="pcheck-anthropic">✓</div>
+          </div>
+
+          <div class="provider-card" id="pcard-groq" onclick="selectProvider('groq')">
+            <div class="provider-icon">⚡</div>
+            <div class="provider-name">Groq</div>
+            <div class="provider-model">llama-3.1-70b</div>
+            <div class="provider-note">Free · Very fast</div>
+            <div class="provider-check" id="pcheck-groq">✓</div>
+          </div>
+
+          <div class="provider-card" id="pcard-openrouter" onclick="selectProvider('openrouter')">
+            <div class="provider-icon">🌐</div>
+            <div class="provider-name">OpenRouter</div>
+            <div class="provider-model">llama-3.1-8b free</div>
+            <div class="provider-note">Free models · Many options</div>
+            <div class="provider-check" id="pcheck-openrouter">✓</div>
+          </div>
+
         </div>
-        <div id="apiKeyStatus" style="font-size:12px; color:var(--muted); font-family:DM Mono, monospace;"></div>
+      </div>
+
+      <!-- ANTHROPIC KEY -->
+      <div class="api-setup" id="setup-anthropic">
+        <div class="card-label" style="margin-bottom:10px;">🟠 Anthropic API Key</div>
+        <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">Get key from <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent2);">console.anthropic.com</a> · $5 free credits on signup</p>
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <input class="form-input" id="apiKeyInput" type="password" placeholder="sk-ant-api03-..." style="flex:1; font-family:DM Mono,monospace; font-size:12px;">
+          <button class="btn btn-primary" onclick="saveProviderKey('anthropic')">Save</button>
+          <button class="btn btn-secondary" onclick="testProvider('anthropic')">Test</button>
+        </div>
+        <div id="status-anthropic" style="font-size:11px; color:var(--muted); font-family:DM Mono,monospace;"></div>
+      </div>
+
+      <!-- GROQ KEY -->
+      <div class="api-setup" id="setup-groq" style="display:none;">
+        <div class="card-label" style="margin-bottom:10px;">⚡ Groq API Key — Free Forever</div>
+        <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">Get free key from <a href="https://console.groq.com" target="_blank" style="color:var(--accent2);">console.groq.com</a> · 30 req/min free · No credit card needed</p>
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <input class="form-input" id="groqKeyInput" type="password" placeholder="gsk_..." style="flex:1; font-family:DM Mono,monospace; font-size:12px;">
+          <button class="btn btn-primary" onclick="saveProviderKey('groq')">Save</button>
+          <button class="btn btn-secondary" onclick="testProvider('groq')">Test</button>
+        </div>
+        <div id="status-groq" style="font-size:11px; color:var(--muted); font-family:DM Mono,monospace;"></div>
+        <div style="margin-top:12px;">
+          <div class="card-label" style="margin-bottom:8px;">Model</div>
+          <select class="form-input" id="groqModel" style="font-size:12px;">
+            <option value="llama-3.1-70b-versatile">llama-3.1-70b-versatile (best)</option>
+            <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (fastest)</option>
+            <option value="mixtral-8x7b-32768">mixtral-8x7b (large context)</option>
+            <option value="gemma2-9b-it">gemma2-9b (lightweight)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- OPENROUTER KEY -->
+      <div class="api-setup" id="setup-openrouter" style="display:none;">
+        <div class="card-label" style="margin-bottom:10px;">🌐 OpenRouter API Key — Free Models Available</div>
+        <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">Get free key from <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--accent2);">openrouter.ai/keys</a> · Many free models · No credit card needed</p>
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <input class="form-input" id="openrouterKeyInput" type="password" placeholder="sk-or-v1-..." style="flex:1; font-family:DM Mono,monospace; font-size:12px;">
+          <button class="btn btn-primary" onclick="saveProviderKey('openrouter')">Save</button>
+          <button class="btn btn-secondary" onclick="testProvider('openrouter')">Test</button>
+        </div>
+        <div id="status-openrouter" style="font-size:11px; color:var(--muted); font-family:DM Mono,monospace;"></div>
+        <div style="margin-top:12px;">
+          <div class="card-label" style="margin-bottom:8px;">Free Model</div>
+          <select class="form-input" id="openrouterModel" style="font-size:12px;">
+            <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B (free)</option>
+            <option value="meta-llama/llama-3.2-3b-instruct:free">Llama 3.2 3B (free, fast)</option>
+            <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (free)</option>
+            <option value="qwen/qwen-2-7b-instruct:free">Qwen 2 7B (free)</option>
+            <option value="google/gemma-2-9b-it:free">Gemma 2 9B (free)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- CONNECTED STATUS -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-label" style="margin-bottom:12px;">📡 Connected Providers</div>
+        <div id="connectedProviders" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
       </div>
       <div class="card">
         <div class="card-label" style="margin-bottom:12px;">Schedule Style</div>
@@ -1175,8 +1277,8 @@ function loadFromStorage() {
   try {
     const s = localStorage.getItem('axis_state');
     if (s) state = { ...state, ...JSON.parse(s) };
-    apiKey = localStorage.getItem('axis_apikey') || '';
   } catch(e) {}
+  loadProviders();
 }
 
 function saveToStorage() {
@@ -1184,11 +1286,7 @@ function saveToStorage() {
 }
 
 function checkApiKey() {
-  if (apiKey) {
-    document.getElementById('apiDot').classList.add('connected');
-    document.getElementById('apiStatusText').textContent = 'AI connected';
-    document.getElementById('apiKeyInput').value = apiKey;
-  }
+  loadProviders();
 }
 
 // ============================================================
@@ -1947,66 +2045,201 @@ function switchGoalTab(tab, el) {
 }
 
 // ============================================================
-// API KEY
+// MULTI-PROVIDER API SYSTEM
 // ============================================================
-function saveApiKey() {
-  const key = document.getElementById('apiKeyInput').value.trim();
-  if (!key.startsWith('sk-ant')) { 
-    document.getElementById('apiKeyStatus').textContent = '⚠ Key format looks wrong. Should start with sk-ant...';
-    return;
+let providers = { anthropic: '', groq: '', openrouter: '' };
+let activeProvider = 'anthropic';
+let groqModel = 'llama-3.1-70b-versatile';
+let openrouterModel = 'meta-llama/llama-3.1-8b-instruct:free';
+
+function loadProviders() {
+  providers.anthropic = localStorage.getItem('axis_apikey') || '';
+  providers.groq = localStorage.getItem('axis_groq_key') || '';
+  providers.openrouter = localStorage.getItem('axis_or_key') || '';
+  activeProvider = localStorage.getItem('axis_provider') || 'anthropic';
+  groqModel = localStorage.getItem('axis_groq_model') || 'llama-3.1-70b-versatile';
+  openrouterModel = localStorage.getItem('axis_or_model') || 'meta-llama/llama-3.1-8b-instruct:free';
+  // Legacy: if only anthropic key exists, keep it
+  apiKey = providers[activeProvider] || providers.anthropic || providers.groq || providers.openrouter || '';
+  updateProviderUI();
+}
+
+function saveProviderKey(provider) {
+  const inputMap = { anthropic: 'apiKeyInput', groq: 'groqKeyInput', openrouter: 'openrouterKeyInput' };
+  const key = document.getElementById(inputMap[provider])?.value.trim();
+  if (!key) { setProviderStatus(provider, '⚠ Please enter a key'); return; }
+
+  // Save model selections too
+  if (provider === 'groq') {
+    groqModel = document.getElementById('groqModel')?.value || groqModel;
+    localStorage.setItem('axis_groq_model', groqModel);
   }
+  if (provider === 'openrouter') {
+    openrouterModel = document.getElementById('openrouterModel')?.value || openrouterModel;
+    localStorage.setItem('axis_or_model', openrouterModel);
+  }
+
+  providers[provider] = key;
+  const storageMap = { anthropic: 'axis_apikey', groq: 'axis_groq_key', openrouter: 'axis_or_key' };
+  localStorage.setItem(storageMap[provider], key);
+
+  // Auto-select this provider
+  selectProvider(provider);
+  setProviderStatus(provider, '✓ Key saved');
+  showNotification(`${provider} connected ✓`);
+}
+
+function selectProvider(provider) {
+  activeProvider = provider;
+  localStorage.setItem('axis_provider', provider);
+  apiKey = providers[provider];
+
+  // Show correct setup panel
+  ['anthropic','groq','openrouter'].forEach(p => {
+    const el = document.getElementById('setup-' + p);
+    if (el) el.style.display = p === provider ? 'block' : 'none';
+    const card = document.getElementById('pcard-' + p);
+    if (card) card.classList.toggle('active', p === provider);
+  });
+
+  updateProviderUI();
+  const connected = !!providers[provider];
+  document.getElementById('apiDot').classList.toggle('connected', connected);
+  document.getElementById('apiStatusText').textContent = connected
+    ? `${provider} connected` : `${provider} — no key yet`;
+}
+
+function updateProviderUI() {
+  // Fill existing key values into inputs
+  if (providers.anthropic && document.getElementById('apiKeyInput'))
+    document.getElementById('apiKeyInput').value = providers.anthropic;
+  if (providers.groq && document.getElementById('groqKeyInput'))
+    document.getElementById('groqKeyInput').value = providers.groq;
+  if (providers.openrouter && document.getElementById('openrouterKeyInput'))
+    document.getElementById('openrouterKeyInput').value = providers.openrouter;
+
+  // Mark cards with keys
+  ['anthropic','groq','openrouter'].forEach(p => {
+    const card = document.getElementById('pcard-' + p);
+    if (card) card.classList.toggle('has-key', !!providers[p]);
+  });
+
+  // Connected badges
+  const badges = document.getElementById('connectedProviders');
+  if (badges) {
+    const icons = { anthropic: '🟠', groq: '⚡', openrouter: '🌐' };
+    badges.innerHTML = ['anthropic','groq','openrouter']
+      .filter(p => providers[p])
+      .map(p => `<span class="badge badge-green" style="gap:6px;">${icons[p]} ${p} ${p === activeProvider ? '← active' : ''}</span>`)
+      .join('') || '<span style="color:var(--muted); font-size:12px;">No providers connected yet. Add a key above.</span>';
+  }
+
+  // Show active setup panel
+  selectProvider(activeProvider);
+}
+
+function setProviderStatus(provider, msg) {
+  const el = document.getElementById('status-' + provider);
+  if (el) el.textContent = msg;
+}
+
+async function testProvider(provider) {
+  const key = providers[provider];
+  if (!key) { setProviderStatus(provider, '⚠ Save a key first'); return; }
+  setProviderStatus(provider, 'Testing...');
+  const prev = activeProvider;
+  activeProvider = provider;
   apiKey = key;
+  const res = await callClaude('Reply with exactly: AXIS connected');
+  activeProvider = prev;
+  apiKey = providers[activeProvider];
+  const ok = res.toLowerCase().includes('axis') || res.toLowerCase().includes('connected');
+  setProviderStatus(provider, ok ? '✓ Connection successful!' : '✗ Failed: ' + res.substring(0, 80));
+}
+
+// Legacy save (still called from old code paths)
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput')?.value.trim();
+  if (!key) return;
+  providers.anthropic = key;
   localStorage.setItem('axis_apikey', key);
-  document.getElementById('apiDot').classList.add('connected');
-  document.getElementById('apiStatusText').textContent = 'AI connected';
-  document.getElementById('apiKeyStatus').textContent = '✓ Key saved locally';
-  showNotification('API Key saved! AXIS is now powered by Claude ⚡');
+  selectProvider('anthropic');
+  showNotification('Anthropic key saved ✓');
 }
 
-async function testApiKey() {
-  if (!apiKey) { saveApiKey(); return; }
-  document.getElementById('apiKeyStatus').textContent = 'Testing...';
-  const res = await callClaude('Say "AXIS connected!" and nothing else.');
-  document.getElementById('apiKeyStatus').textContent = res.includes('AXIS') ? '✓ Connection successful!' : '✗ Error: ' + res.substring(0, 100);
-}
-
-function saveSettings() {
-  state.settings.intensity = document.getElementById('scheduleIntensity').value;
-  state.settings.focus = document.getElementById('primaryFocus').value;
-  saveToStorage();
-  showNotification('Settings saved ✓');
-}
+async function testApiKey() { await testProvider('anthropic'); }
 
 // ============================================================
-// CLAUDE API CALL
+// UNIFIED AI CALL — routes to correct provider
 // ============================================================
 async function callClaude(userMsg, history = null, systemPrompt = null) {
-  try {
-    const messages = history || [{ role: 'user', content: userMsg }];
-    if (!history && userMsg) {
-      // single-shot
-    }
-    const body = {
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      messages: messages
-    };
-    if (systemPrompt) body.system = systemPrompt;
-    if (!history && userMsg) body.messages = [{ role: 'user', content: userMsg }];
+  const key = providers[activeProvider] || apiKey;
+  if (!key) return '⚠ No API key set. Go to Settings and add a key.';
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify(body)
-    });
-    const data = await response.json();
-    if (data.error) return '⚠ API Error: ' + data.error.message;
-    return data.content?.map(c => c.text || '').join('') || 'No response.';
+  const messages = (history && history.length)
+    ? history
+    : [{ role: 'user', content: userMsg }];
+
+  try {
+    // ---- ANTHROPIC ----
+    if (activeProvider === 'anthropic') {
+      const body = { model: 'claude-sonnet-4-6', max_tokens: 4096, messages };
+      if (systemPrompt) body.system = systemPrompt;
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (data.error) return '⚠ Anthropic Error: ' + data.error.message;
+      return data.content?.map(c => c.text || '').join('') || 'No response.';
+    }
+
+    // ---- GROQ ----
+    if (activeProvider === 'groq') {
+      const model = localStorage.getItem('axis_groq_model') || 'llama-3.1-70b-versatile';
+      const msgs = systemPrompt
+        ? [{ role: 'system', content: systemPrompt }, ...messages]
+        : messages;
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + key
+        },
+        body: JSON.stringify({ model, max_tokens: 4096, messages: msgs })
+      });
+      const data = await res.json();
+      if (data.error) return '⚠ Groq Error: ' + (data.error.message || JSON.stringify(data.error));
+      return data.choices?.[0]?.message?.content || 'No response.';
+    }
+
+    // ---- OPENROUTER ----
+    if (activeProvider === 'openrouter') {
+      const model = localStorage.getItem('axis_or_model') || 'meta-llama/llama-3.1-8b-instruct:free';
+      const msgs = systemPrompt
+        ? [{ role: 'system', content: systemPrompt }, ...messages]
+        : messages;
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + key,
+          'HTTP-Referer': 'https://axis-agent.app',
+          'X-Title': 'AXIS Personal Agent'
+        },
+        body: JSON.stringify({ model, max_tokens: 4096, messages: msgs })
+      });
+      const data = await res.json();
+      if (data.error) return '⚠ OpenRouter Error: ' + (data.error.message || JSON.stringify(data.error));
+      return data.choices?.[0]?.message?.content || 'No response.';
+    }
+
   } catch(e) {
     return '⚠ Network error: ' + e.message;
   }
