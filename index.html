@@ -643,6 +643,56 @@
   .sched-mini { animation: schedPop 0.25s ease; }
 </style>
 </head>
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyD-o3915dq-HLveivBugBYF0avPVNscZck",
+    authDomain: "axis-agent-e58da.firebaseapp.com",
+    projectId: "axis-agent-e58da",
+    storageBucket: "axis-agent-e58da.firebasestorage.app",
+    messagingSenderId: "692721006345",
+    appId: "1:692721006345:web:fce2e991731cf646ca85d8"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Fixed user ID — single user app
+  const USER_ID = 'axis_user_main';
+
+  // Save to Firebase
+  window.firebaseSave = async (data) => {
+    try {
+      await setDoc(doc(db, 'users', USER_ID), {
+        ...data,
+        updatedAt: new Date().toISOString()
+      });
+      console.log('Firebase: saved');
+    } catch(e) {
+      console.warn('Firebase save failed:', e.message);
+    }
+  };
+
+  // Load from Firebase
+  window.firebaseLoad = async () => {
+    try {
+      const snap = await getDoc(doc(db, 'users', USER_ID));
+      if (snap.exists()) {
+        console.log('Firebase: loaded');
+        return snap.data();
+      }
+    } catch(e) {
+      console.warn('Firebase load failed:', e.message);
+    }
+    return null;
+  };
+
+  window.firebaseReady = true;
+  console.log('Firebase ready ✓');
+</script>
 <body>
 <div class="glow"></div>
 <div class="glow2"></div>
@@ -1274,15 +1324,45 @@ window.onload = () => {
 };
 
 function loadFromStorage() {
+  // Load from localStorage first (instant, works offline)
   try {
     const s = localStorage.getItem('axis_state');
     if (s) state = { ...state, ...JSON.parse(s) };
   } catch(e) {}
   loadProviders();
+
+  // Then sync from Firebase in background (gets cross-device data)
+  setTimeout(async () => {
+    if (!window.firebaseLoad) return;
+    const remote = await window.firebaseLoad();
+    if (!remote || !remote.state) return;
+    try {
+      const remoteState = JSON.parse(remote.state);
+      // Only use remote if it's newer or has more data
+      const remoteUpdated = new Date(remote.updatedAt || 0);
+      const localUpdated = new Date(state.lastSaved || 0);
+      if (remoteUpdated > localUpdated || !state.lastSaved) {
+        state = { ...state, ...remoteState };
+        localStorage.setItem('axis_state', JSON.stringify(state));
+        // Refresh UI
+        updateGreeting();
+        renderSchedule();
+        renderSwot();
+        renderGoals();
+        renderHabits();
+        updateStats();
+        showNotification('☁️ Synced from cloud!');
+      }
+    } catch(e) {}
+  }, 2000);
 }
 
 function saveToStorage() {
+  state.lastSaved = new Date().toISOString();
   localStorage.setItem('axis_state', JSON.stringify(state));
+  if (window.firebaseSave) {
+    window.firebaseSave({ state: JSON.stringify(state) });
+  }
 }
 
 function checkApiKey() {
